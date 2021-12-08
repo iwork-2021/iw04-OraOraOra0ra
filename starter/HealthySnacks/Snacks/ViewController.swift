@@ -42,7 +42,7 @@ class ViewController: UIViewController {
     
   lazy var classficationRequest: VNCoreMLRequest = {
     do{
-        let classifier = try SnackClassifier(configuration: MLModelConfiguration())
+        let classifier = try HealthySnacks(configuration: MLModelConfiguration())
         let model = try VNCoreMLModel(for: classifier.model)
         let request = VNCoreMLRequest(model: model, completionHandler: {
             [weak self] request,error in
