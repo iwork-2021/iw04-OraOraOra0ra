@@ -27,6 +27,7 @@
 /// THE SOFTWARE.
 
 import UIKit
+import Vision
 
 class ViewController: UIViewController {
   
@@ -38,6 +39,45 @@ class ViewController: UIViewController {
   @IBOutlet var resultsConstraint: NSLayoutConstraint!
 
   var firstTime = true
+    
+  lazy var classficationRequest: VNCoreMLRequest = {
+    do{
+        let classifier = try SnackClassifier(configuration: MLModelConfiguration())
+        let model = try VNCoreMLModel(for: classifier.model)
+        let request = VNCoreMLRequest(model: model, completionHandler: {
+            [weak self] request,error in
+            self?.processObservations(for: request, error: error)
+        })
+        request.imageCropAndScaleOption = .centerCrop
+        return request
+    } catch {
+        fatalError("Failed to create request")
+    }
+  }()
+    
+  func processObservations(for request: VNRequest, error: Error?) {
+    // print("Result:",request.results)
+    if let results = request.results as? [VNClassificationObservation] {
+      if results.isEmpty {
+        self.resultsLabel.text = "Nothing found"
+      } else {
+          let name = results[0].identifier
+          let rate = results[0].confidence
+          if rate > 0.8 {
+            self.resultsLabel.text = name + ": " + String(rate*100) + "%"
+          }
+          else {
+            self.resultsLabel.text = "I am not sure..."
+          }
+        }
+    } else if let error = error {
+        self.resultsLabel.text = "Error: \(error.localizedDescription)"
+    } else {
+        self.resultsLabel.text = "???"
+    }
+      
+    self.showResultsView()
+  }
 
   override func viewDidLoad() {
     super.viewDidLoad()
@@ -96,6 +136,14 @@ class ViewController: UIViewController {
   }
 
   func classify(image: UIImage) {
+    DispatchQueue.main.async {
+        let handler = VNImageRequestHandler(cgImage: image.cgImage!)
+      do {
+        try handler.perform([self.classficationRequest])
+      } catch {
+          print("Failed to perform classification: \(error)")
+        }
+    }
   }
 }
 
@@ -109,3 +157,4 @@ extension ViewController: UIImagePickerControllerDelegate, UINavigationControlle
     classify(image: image)
   }
 }
+
